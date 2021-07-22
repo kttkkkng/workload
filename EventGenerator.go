@@ -11,7 +11,7 @@ func CreateEvents(distribution string, rate int, duration int) []float32 {
 		}
 		return times
 	}
-	return nil
+	return make([]float32, 0)
 }
 
 func EnforceActivityWindow(start_time int, end_time int, times []float32) []float32 {
