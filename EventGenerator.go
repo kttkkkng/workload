@@ -47,8 +47,12 @@ func GenericEventGenerator(workload map[string]interface{}) (map[string]interfac
 		start_time := 0
 		end_time := duration.(int)
 		if activity_window, ok := desc["activity_window"]; ok {
-			start_time = activity_window.([]int)[0]
-			end_time = activity_window.([]int)[1]
+			if window, ok := activity_window.([]int); ok {
+				if len(window) >= 2 {
+					start_time = window[0]
+					end_time = window[1]
+				}
+			}
 		}
 		instance_events = EnforceActivityWindow(start_time, end_time, instance_events)
 		all_event[instance] = instance_events
