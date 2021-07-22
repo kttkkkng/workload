@@ -37,7 +37,16 @@ func CheckWorkloadValidty(workload map[string]interface{}) bool {
 		log.Println("duration invalid")
 		return false
 	}
-	for instance, desc := range workload["instances"].(map[string]interface{}) {
+	if _, ok := workload["instances"]; !ok {
+		log.Println("instances not found")
+		return false
+	}
+	instances, ok := workload["instances"].(map[string]interface{})
+	if !ok {
+		log.Println("instances invalid")
+		return false
+	}
+	for instance, desc := range instances {
 		desc := desc.(map[string]interface{})
 		if application, ok := desc["application"]; ok {
 			if _, ok := application.(string); !ok {
