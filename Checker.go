@@ -6,7 +6,7 @@ import (
 )
 
 //Global variable
-var support_distributions []string = append(make([]string, 0), "Uniform")
+var support_distributions []string = []string{"Uniform"}
 
 func NotSupport(distribution string) bool {
 	for _, support_distribution := range support_distributions {
