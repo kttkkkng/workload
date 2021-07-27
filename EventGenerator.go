@@ -34,6 +34,11 @@ func EnforceActivityWindow(start_time int, end_time int, times []float32) []floa
 		}
 		i++
 	}
+	i = len(event_times) - 1
+	for i >= 1 {
+		event_times[i] -= event_times[i-1]
+		i--
+	}
 	return event_times
 }
 
