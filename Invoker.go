@@ -46,7 +46,7 @@ func main() {
 		log.Fatalln("json not valid")
 	}
 	all_event, event_count := GenericEventGenerator(workload)
-	for instance, _ := range all_event {
+	for instance := range all_event {
 		if path, ok := workload[instance].(map[string]interface{})["data_file"]; ok {
 			file, err = ioutil.ReadFile(path.(string))
 			if err != nil {
