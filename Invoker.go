@@ -21,11 +21,11 @@ func HTTPInstanceGenerator(instance string, action string, instance_time []float
 	after_time := 0
 	st := 0
 	for _, t := range instance_time {
-		st = int(1000 * (t - float32(after_time-before_time)))
+		st = int(1000*t - float32(after_time-before_time))
 		time.Sleep(time.Duration(st) * time.Millisecond)
-		before_time = int(time.Now().Unix())
+		before_time = int(time.Now().Nanosecond() / 1000000)
 		post(url, data[instance])
-		after_time = int(time.Now().Unix())
+		after_time = int(time.Now().Nanosecond() / 1000000)
 	}
 }
 
