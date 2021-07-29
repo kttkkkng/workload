@@ -1,4 +1,4 @@
-package workload
+package main
 
 import (
 	"encoding/json"
@@ -49,6 +49,7 @@ func main() {
 		log.Fatalln("config file must be provide as first argument")
 	}
 	var workload map[string]interface{}
+	data = make(map[string]interface{})
 	file, err := ioutil.ReadFile(os.Args[1])
 	if err != nil {
 		log.Fatalln(err)
@@ -60,14 +61,16 @@ func main() {
 	if !CheckWorkloadValidty(workload) {
 		log.Fatalln("json not valid")
 	}
+	log.Println("Config file is valid")
 	if _, ok := workload["ClientID"]; !ok {
 		workload["ClientID"] = "clientID1"
 	}
 	config.ClientID = workload["ClientID"].(string)
 	config.FrontEndAddr = workload["FrontEndAddr"].(string)
 	all_event, event_count := GenericEventGenerator(workload)
+	log.Println("GenericEventGen Completed")
 	for instance := range all_event {
-		file, err = ioutil.ReadFile(workload[instance].(map[string]interface{})["data_file"].(string))
+		file, err = ioutil.ReadFile(workload["instances"].(map[string]interface{})[instance].(map[string]interface{})["dataFile"].(string))
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -78,9 +81,12 @@ func main() {
 		}
 		data[instance] = tmp
 	}
+	log.Println("Test Start")
 	for instance, instance_time := range all_event {
-		action := workload[instance].(map[string]interface{})["application"].(string)
+		action := workload["instances"].(map[string]interface{})[instance].(map[string]interface{})["application"].(string)
 		go HTTPInstanceGenerator(instance, action, instance_time.([]float32))
 	}
+	time.Sleep(time.Duration(int(workload["duration"].(float64)))*time.Second)
+	log.Println("Test End")
 	log.Println("Total:", event_count, "event(s)")
 }

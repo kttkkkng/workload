@@ -1,9 +1,8 @@
-package workload
+package main
 
 import (
 	"log"
 	"os"
-	"reflect"
 )
 
 //Global variable
@@ -19,21 +18,13 @@ func NotSupport(distribution string) bool {
 }
 
 func CheckWorkloadValidty(workload map[string]interface{}) bool {
-	var fields_to_check map[string]interface{}
-	fields_to_check["test_name"] = ""
-	fields_to_check["duration"] = 0
-	for field, t := range fields_to_check {
-		if value, ok := workload[field]; ok {
-			if reflect.TypeOf(value) != reflect.TypeOf(t) {
-				log.Print(field, "type should be", reflect.TypeOf(t))
-				return false
-			}
-		} else {
-			log.Println(field, "not found")
-			return false
-		}
+	if _, ok := workload["test_name"]; !ok {
+		log.Fatalln("test name not found")
 	}
-	if workload["duration"].(int) < 0 {
+	if _, ok := workload["duration"]; !ok {
+		log.Fatalln("duration not found")
+	}
+	if workload["duration"].(float64) < 0 {
 		log.Println("duration should be positive integer")
 		return false
 	}
@@ -76,11 +67,11 @@ func CheckWorkloadValidty(workload map[string]interface{}) bool {
 			return false
 		}
 		if rate, ok := desc["rate"]; ok {
-			if _, ok := rate.(int); !ok {
+			if _, ok := rate.(float64); !ok {
 				log.Println("In", instance, "rate should be positive integer")
 				return false
 			}
-			if rate.(int) < 0 {
+			if rate.(float64) < 0 {
 				log.Println("In", instance, "rate should be positive integer")
 				return false
 			}
