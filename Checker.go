@@ -2,6 +2,7 @@ package workload
 
 import (
 	"log"
+	"os"
 	"reflect"
 )
 
@@ -20,7 +21,6 @@ func NotSupport(distribution string) bool {
 func CheckWorkloadValidty(workload map[string]interface{}) bool {
 	var fields_to_check map[string]interface{}
 	fields_to_check["test_name"] = ""
-	fields_to_check["blocking_cli"] = false
 	fields_to_check["duration"] = 0
 	for field, t := range fields_to_check {
 		if value, ok := workload[field]; ok {
@@ -34,7 +34,11 @@ func CheckWorkloadValidty(workload map[string]interface{}) bool {
 		}
 	}
 	if workload["duration"].(int) < 0 {
-		log.Println("duration invalid")
+		log.Println("duration should be positive integer")
+		return false
+	}
+	if _, ok := workload["FrontEndAddr"]; !ok {
+		log.Println("FrontEndAddr not found")
 		return false
 	}
 	if _, ok := workload["instances"]; !ok {
@@ -82,6 +86,14 @@ func CheckWorkloadValidty(workload map[string]interface{}) bool {
 			}
 		} else {
 			log.Println("In", instance, "rate not found")
+			return false
+		}
+		if dataFile, ok := desc["dataFile"]; ok {
+			if _, err := os.Stat(dataFile.(string)); os.IsNotExist(err) {
+				log.Fatalln("In", instance, "data file is not exist")
+			}
+		} else {
+			log.Println("In", instance, "data file not found")
 			return false
 		}
 	}

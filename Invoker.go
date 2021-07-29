@@ -6,17 +6,31 @@ import (
 	"log"
 	"os"
 	"time"
+
+	"github.com/kttkkkng/workload/kvslib"
 )
 
-var data map[string][]byte
+var data map[string]interface{}
 var base_url string
+var config ClientConfig
 
-func post(url string, body []byte) {
-	//Unimplemented
+func post(client *Client, action string, data map[string]interface{}) {
+	switch action {
+	case "Get":
+		client.Get(config.ClientID, data["Key"].(string))
+	case "Put":
+		client.Put(config.ClientID, data["Key"].(string), data["Value"].(string), 0)
+	default:
+		log.Fatalln("No action", action)
+	}
 }
 
-func HTTPInstanceGenerator(instance string, action string, instance_time []float32, blocking_cli bool) {
-	url := base_url + action
+func HTTPInstanceGenerator(instance string, action string, instance_time []float32) {
+	//url := base_url + action
+	client := NewClient(config, kvslib.NewKVS())
+	if err := client.Initialize(); err != nil {
+		log.Fatalln(err)
+	}
 	before_time := 0
 	after_time := 0
 	st := 0
@@ -24,9 +38,10 @@ func HTTPInstanceGenerator(instance string, action string, instance_time []float
 		st = int(1000*t - float32(after_time-before_time))
 		time.Sleep(time.Duration(st) * time.Millisecond)
 		before_time = int(time.Now().Nanosecond() / 1000000)
-		post(url, data[instance])
+		post(client, action, data[instance].(map[string]interface{}))
 		after_time = int(time.Now().Nanosecond() / 1000000)
 	}
+	client.Close()
 }
 
 func main() {
@@ -45,22 +60,27 @@ func main() {
 	if !CheckWorkloadValidty(workload) {
 		log.Fatalln("json not valid")
 	}
+	if _, ok := workload["ClientID"]; !ok {
+		workload["ClientID"] = "clientID1"
+	}
+	config.ClientID = workload["ClientID"].(string)
+	config.FrontEndAddr = workload["FrontEndAddr"].(string)
 	all_event, event_count := GenericEventGenerator(workload)
 	for instance := range all_event {
-		if path, ok := workload[instance].(map[string]interface{})["data_file"]; ok {
-			file, err = ioutil.ReadFile(path.(string))
-			if err != nil {
-				log.Fatalln(err)
-			}
-			data[instance] = file
-		} else {
-			data[instance] = []byte("{}")
+		file, err = ioutil.ReadFile(workload[instance].(map[string]interface{})["data_file"].(string))
+		if err != nil {
+			log.Fatalln(err)
 		}
+		var tmp map[string]interface{}
+		err = json.Unmarshal([]byte(file), &tmp)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		data[instance] = tmp
 	}
 	for instance, instance_time := range all_event {
 		action := workload[instance].(map[string]interface{})["application"].(string)
-		blocking_cli := workload[instance].(map[string]interface{})["blocking_cli"].(bool)
-		go HTTPInstanceGenerator(instance, action, instance_time.([]float32), blocking_cli)
+		go HTTPInstanceGenerator(instance, action, instance_time.([]float32))
 	}
 	log.Println("Total:", event_count, "event(s)")
 }
