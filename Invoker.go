@@ -12,14 +12,14 @@ import (
 
 var data map[string]interface{}
 var base_url string
-var config ClientConfig
+var FrontEndAddr string
 
 func post(client *Client, action string, data map[string]interface{}) {
 	switch action {
 	case "Get":
-		client.Get(config.ClientID, data["Key"].(string))
+		client.Get(client.id, data["Key"].(string))
 	case "Put":
-		client.Put(config.ClientID, data["Key"].(string), data["Value"].(string), 0)
+		client.Put(client.id, data["Key"].(string), data["Value"].(string), 0)
 	default:
 		log.Fatalln("No action", action)
 	}
@@ -27,6 +27,10 @@ func post(client *Client, action string, data map[string]interface{}) {
 
 func HTTPInstanceGenerator(instance string, action string, instance_time []float32) {
 	//url := base_url + action
+	config := ClientConfig{
+		ClientID:instance,
+		FrontEndAddr:FrontEndAddr,
+	}
 	client := NewClient(config, kvslib.NewKVS())
 	if err := client.Initialize(); err != nil {
 		log.Fatalln(err)
@@ -34,14 +38,31 @@ func HTTPInstanceGenerator(instance string, action string, instance_time []float
 	before_time := 0
 	after_time := 0
 	st := 0
-	for _, t := range instance_time {
+	time_stamp := make([]time.Time, len(instance_time))
+	go ReceiveResponse(client, &time_stamp)
+	for index, t := range instance_time {
 		st = int(1000*t - float32(after_time-before_time))
 		time.Sleep(time.Duration(st) * time.Millisecond)
 		before_time = int(time.Now().Nanosecond() / 1000000)
+		time_stamp[index] = time.Now()
 		post(client, action, data[instance].(map[string]interface{}))
 		after_time = int(time.Now().Nanosecond() / 1000000)
 	}
+}
+
+func ReceiveResponse(client *Client, time_stamp *[]time.Time) {
+	RoundTripTimes := make([]int64, len(*time_stamp))
+	Results := make([]string, len(*time_stamp))
+	i := 0
+	for i < len(*time_stamp) {
+		result := <-client.NotifyChannel
+		log.Println("Hello")
+		Results[i] = *result.Result
+		RoundTripTimes[i] = int64(time.Now().Sub((*time_stamp)[i])/time.Millisecond)
+		i++
+	}
 	client.Close()
+	log.Println(client.id, "Round Trip Time:", RoundTripTimes, "Result:", Results)
 }
 
 func main() {
@@ -65,8 +86,7 @@ func main() {
 	if _, ok := workload["ClientID"]; !ok {
 		workload["ClientID"] = "clientID1"
 	}
-	config.ClientID = workload["ClientID"].(string)
-	config.FrontEndAddr = workload["FrontEndAddr"].(string)
+	FrontEndAddr = workload["FrontEndAddr"].(string)
 	all_event, event_count := GenericEventGenerator(workload)
 	log.Println("GenericEventGen Completed")
 	for instance := range all_event {
