@@ -81,12 +81,12 @@ func main() {
 		}
 		data[instance] = tmp
 	}
-	log.Println("Test Start")
+	log.Println("Test", workload["test_name"].(string), "Start")
 	for instance, instance_time := range all_event {
 		action := workload["instances"].(map[string]interface{})[instance].(map[string]interface{})["application"].(string)
 		go HTTPInstanceGenerator(instance, action, instance_time.([]float32))
 	}
-	time.Sleep(time.Duration(int(workload["duration"].(float64)))*time.Second)
+	time.Sleep(time.Duration(int(workload["duration"].(float64)) + 10)*time.Second)
 	log.Println("Test End")
 	log.Println("Total:", event_count, "event(s)")
 }

@@ -59,10 +59,10 @@ func GenericEventGenerator(workload map[string]interface{}) (map[string]interfac
 		start_time := 0
 		end_time := int(duration.(float64))
 		if activity_window, ok := desc["activity_window"]; ok {
-			if window, ok := activity_window.([]float64); ok {
+			if window, ok := activity_window.([]interface{}); ok {
 				if len(window) >= 2 {
-					start_time = int(window[0])
-					end_time = int(window[1])
+					start_time = int(window[0].(float64))
+					end_time = int(window[1].(float64))
 				}
 			}
 		}

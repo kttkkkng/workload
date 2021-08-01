@@ -1,6 +1,6 @@
 {
     "test_name": "example_test",
-    "duration": 15,
+    "duration": 20,
     "ClientID": "clientID1",
     "FrontEndAddr": "frontend.default.172.16.1.240.sslip.io:80",
     "instances":{
@@ -9,14 +9,14 @@
             "distribution": "Uniform",
             "dataFile": "data/instance1.json",
             "rate": 25,
-            "activity_window": [5, 10]
+            "activity_window": [15, 20]
         },
         "instance2":{
             "application": "Put",
             "distribution": "Uniform",
             "dataFile": "data/instance2.json",
             "rate": 25,
-            "activity_window": [5, 10]
+            "activity_window": [15, 20]
         }
     }
 }
