@@ -1,0 +1,34 @@
+syntax = "proto3";
+option go_package = "./pb";
+package main;
+
+message FrontendGetRequest {
+  string client_id = 1;
+  uint32 op_id = 2;
+  string key = 3;
+}
+
+message FrontendGetReponse {
+  uint32 op_id = 1;
+  bool storage_fail = 2;
+  string result = 3;
+}
+
+message FrontendPutRequest {
+  string client_id = 1;
+  uint32 op_id = 2;
+  string key = 3;
+  string value = 4;
+  uint32 delay = 5;
+}
+
+message FrontendPutReponse {
+  uint32 op_id = 1;
+  bool storage_fail = 2;
+  string result = 3;
+}
+
+service Frontend {
+  rpc HandleGet(FrontendGetRequest) returns (FrontendGetReponse) {}
+  rpc HandlePut(FrontendPutRequest) returns (FrontendPutReponse) {}
+}

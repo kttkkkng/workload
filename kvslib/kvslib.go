@@ -100,20 +100,20 @@ func (d *KVS) Initialize(clientId string, frontEndAddr string, chCapacity uint) 
 
 // Get is a non-blocking request from the client to the system. This call is used by
 // the client when it wants to get value for a key.
-func (d *KVS) Get(clientId string, key string) (uint32, error) {
+func (d *KVS) Get(reqId uint32, key string) (uint32, error) {
 	d.OpId++
 
 	client := pb.NewFrontendClient(d.grpcClientConn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()
 	res, err := client.HandleGet(ctx, &pb.FrontendGetRequest{
-		ClientId: clientId,
+		ClientId: d.ClientId.ClientId,
 		OpId:     d.OpId,
 		Key:      key,
 	})
 	if err != nil {
-		return d.OpId, errors.New("HandleGet Failed")
+		return reqId, errors.New("HandleGet Failed")
 	}
 
 	// convert grpc to return type: ResultStruct
@@ -124,27 +124,27 @@ func (d *KVS) Get(clientId string, key string) (uint32, error) {
 
 	d.notifyCh <- *reply
 
-	return d.OpId, nil
+	return reqId, nil
 }
 
 // Put is a non-blocking request from the client to the system. This call is used by
 // the client when it wants to update the value of an existing key or add add a new
 // key and value pair.
-func (d *KVS) Put(clientId string, key string, value string, delay int) (uint32, error) {
+func (d *KVS) Put(reqId uint32, key string, value string, delay int) (uint32, error) {
 	d.OpId++
 
 	client := pb.NewFrontendClient(d.grpcClientConn)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()
 	res, err := client.HandlePut(ctx, &pb.FrontendPutRequest{
-		ClientId: clientId,
+		ClientId: d.ClientId.ClientId,
 		OpId:     d.OpId,
 		Key:      key,
 		Value:    value,
 		Delay:    uint32(delay),
 	})
 	if err != nil {
-		return d.OpId, errors.New("HandlePut Failed")
+		return reqId, errors.New("HandlePut Failed")
 	}
 
 	reply := new(ResultStruct)
@@ -153,7 +153,7 @@ func (d *KVS) Put(clientId string, key string, value string, delay int) (uint32,
 	reply.Result = &res.Result
 	d.notifyCh <- *reply
 
-	return d.OpId, nil
+	return reqId, nil
 }
 
 // Close Stops the KVS instance from communicating with the frontend and
@@ -161,10 +161,6 @@ func (d *KVS) Put(clientId string, key string, value string, delay int) (uint32,
 // with stopping, this should return an appropriate err value, otherwise err
 // should be set to nil.
 func (d *KVS) Close() error {
-	// err := d.rpcClient.Close()
-	// if err != nil {
-	// 	return errors.New(err.Error())
-	// }
 	err := d.grpcClientConn.Close()
 	if err != nil {
 		return errors.New(err.Error())
