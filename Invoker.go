@@ -58,6 +58,7 @@ func HTTPInstanceGenerator(wg *sync.WaitGroup, instance string, action string, i
 func ReceiveResponse(finished chan bool, client *Client, time_stamp *[]time.Time) {
 	RoundTripTimes := make([]int64, len(*time_stamp))
 	Results := make([]string, len(*time_stamp))
+	timeout := 0
 	// i := 0
 	// for i < len(*time_stamp) {
 	// 	result := <-client.NotifyChannel
@@ -74,17 +75,18 @@ func ReceiveResponse(finished chan bool, client *Client, time_stamp *[]time.Time
 	// 	RoundTripTimes[i] = int64(time.Since((*time_stamp)[i]) / time.Millisecond)
 	// 	i++
 	// }
-	for i := 0; i < len(*time_stamp); i++{
-		result := <- client.NotifyChannel
+	for i := 0; i < len(*time_stamp); i++ {
+		result := <-client.NotifyChannel
 		if result.Timeout {
-			RoundTripTimes[i] = int64(time.Since((*time_stamp)[i]) / time.Millisecond)
+			timeout++
+			RoundTripTimes[result.ReqId] = int64(time.Since((*time_stamp)[result.ReqId]) / time.Millisecond)
 			continue
 		}
-		Results[i] = *result.Result
-		RoundTripTimes[i] = int64(time.Since((*time_stamp)[i]) / time.Millisecond)
+		Results[result.ReqId] = *result.Result
+		RoundTripTimes[result.ReqId] = int64(time.Since((*time_stamp)[result.ReqId]) / time.Millisecond)
 	}
 	client.Close()
-	log.Println(client.id, "Round Trip Time:", RoundTripTimes)
+	log.Println(client.id, "time out:", timeout, "Round Trip Time:", RoundTripTimes)
 	finished <- true
 }
 
