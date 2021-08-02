@@ -108,7 +108,7 @@ func (d *KVS) Get(clientId string, key string) (uint32, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	res, err := client.HandleGet(ctx, &pb.FrontendGetRequest{
-		ClientId: d.ClientId.ClientId,
+		ClientId: clientId,
 		OpId:     d.OpId,
 		Key:      key,
 	})
@@ -133,12 +133,11 @@ func (d *KVS) Get(clientId string, key string) (uint32, error) {
 func (d *KVS) Put(clientId string, key string, value string, delay int) (uint32, error) {
 	d.OpId++
 
-	// --- GRPC VERSION ---
 	client := pb.NewFrontendClient(d.grpcClientConn)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	res, err := client.HandlePut(ctx, &pb.FrontendPutRequest{
-		ClientId: d.ClientId.ClientId,
+		ClientId: clientId,
 		OpId:     d.OpId,
 		Key:      key,
 		Value:    value,

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/kttkkkng/workload/kvslib"
@@ -25,44 +26,57 @@ func post(client *Client, action string, data map[string]interface{}) {
 	}
 }
 
-func HTTPInstanceGenerator(instance string, action string, instance_time []float32) {
+func HTTPInstanceGenerator(wg *sync.WaitGroup, instance string, action string, instance_time []float32) {
+	defer wg.Done()
 	//url := base_url + action
 	config := ClientConfig{
-		ClientID:instance,
-		FrontEndAddr:FrontEndAddr,
+		ClientID:     instance,
+		FrontEndAddr: FrontEndAddr,
 	}
 	client := NewClient(config, kvslib.NewKVS())
 	if err := client.Initialize(); err != nil {
 		log.Fatalln(err)
 	}
-	before_time := 0
-	after_time := 0
+	stamp := time.Now()
+	var time_diff time.Duration
+	time_diff = 0
 	st := 0
 	time_stamp := make([]time.Time, len(instance_time))
-	go ReceiveResponse(client, &time_stamp)
+	finished := make(chan bool)
+	go ReceiveResponse(finished, client, &time_stamp)
 	for index, t := range instance_time {
-		st = int(1000*t - float32(after_time-before_time))
+		st = int(1000*t - float32(time_diff/time.Millisecond))
 		time.Sleep(time.Duration(st) * time.Millisecond)
-		before_time = int(time.Now().Nanosecond() / 1000000)
+		stamp = time.Now()
 		time_stamp[index] = time.Now()
 		post(client, action, data[instance].(map[string]interface{}))
-		after_time = int(time.Now().Nanosecond() / 1000000)
+		time_diff = time.Since(stamp)
 	}
+	<-finished
 }
 
-func ReceiveResponse(client *Client, time_stamp *[]time.Time) {
+func ReceiveResponse(finished chan bool, client *Client, time_stamp *[]time.Time) {
 	RoundTripTimes := make([]int64, len(*time_stamp))
 	Results := make([]string, len(*time_stamp))
 	i := 0
 	for i < len(*time_stamp) {
 		result := <-client.NotifyChannel
-		log.Println("Hello")
+		if int(result.OpId) > i+1 {
+			j := i + 1
+			for j < int(result.OpId) {
+				log.Println(client.id, "Result", j, "missing")
+				RoundTripTimes[j-1] = -1
+				j++
+				i++
+			}
+		}
 		Results[i] = *result.Result
-		RoundTripTimes[i] = int64(time.Now().Sub((*time_stamp)[i])/time.Millisecond)
+		RoundTripTimes[i] = int64(time.Since((*time_stamp)[i]) / time.Millisecond)
 		i++
 	}
 	client.Close()
-	log.Println(client.id, "Round Trip Time:", RoundTripTimes, "Result:", Results)
+	log.Println(client.id, "Round Trip Time:", RoundTripTimes)
+	finished <- true
 }
 
 func main() {
@@ -102,11 +116,13 @@ func main() {
 		data[instance] = tmp
 	}
 	log.Println("Test", workload["test_name"].(string), "Start")
+	var wg sync.WaitGroup
 	for instance, instance_time := range all_event {
 		action := workload["instances"].(map[string]interface{})[instance].(map[string]interface{})["application"].(string)
-		go HTTPInstanceGenerator(instance, action, instance_time.([]float32))
+		wg.Add(1)
+		go HTTPInstanceGenerator(&wg, instance, action, instance_time.([]float32))
 	}
-	time.Sleep(time.Duration(int(workload["duration"].(float64)) + 10)*time.Second)
+	wg.Wait()
 	log.Println("Test End")
 	log.Println("Total:", event_count, "event(s)")
 }
