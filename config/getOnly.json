@@ -1,6 +1,6 @@
 {
     "test_name": "getOnly",
-    "duration": 15,
+    "duration": 10,
     "FrontEndAddr": "frontend-grpc.default.172.16.1.240.sslip.io:80",
     "instances":{
         "instance1":{

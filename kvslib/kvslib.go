@@ -52,9 +52,11 @@ type KvslibComplete struct {
 type NotifyChannel chan ResultStruct
 
 type ResultStruct struct {
+	ReqId				uint32
 	OpId        uint32
 	StorageFail bool
 	Result      *string
+	Timeout 		bool
 }
 
 type KVS struct {
@@ -113,14 +115,22 @@ func (d *KVS) Get(reqId uint32, key string) (uint32, error) {
 		Key:      key,
 	})
 	if err != nil {
+		reply := new(ResultStruct)
+		reply.ReqId = reqId
+		reply.OpId = d.OpId
+		reply.Timeout = true
+
+		d.notifyCh <- *reply
 		return reqId, errors.New("HandleGet Failed")
 	}
 
 	// convert grpc to return type: ResultStruct
 	reply := new(ResultStruct)
+	reply.ReqId = reqId
 	reply.OpId = d.OpId
 	reply.Result = &res.Result
 	reply.StorageFail = res.StorageFail
+	reply.Timeout = false
 
 	d.notifyCh <- *reply
 
@@ -144,13 +154,22 @@ func (d *KVS) Put(reqId uint32, key string, value string, delay int) (uint32, er
 		Delay:    uint32(delay),
 	})
 	if err != nil {
+		reply := new(ResultStruct)
+		reply.ReqId = reqId
+		reply.OpId = d.OpId
+		reply.Timeout = true
+
+		d.notifyCh <- *reply
+
 		return reqId, errors.New("HandlePut Failed")
 	}
 
 	reply := new(ResultStruct)
+	reply.ReqId = reqId
 	reply.OpId = d.OpId
 	reply.StorageFail = res.StorageFail
 	reply.Result = &res.Result
+	reply.Timeout = false
 	d.notifyCh <- *reply
 
 	return reqId, nil

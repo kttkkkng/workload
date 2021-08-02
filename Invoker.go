@@ -15,12 +15,12 @@ var data map[string]interface{}
 var base_url string
 var FrontEndAddr string
 
-func post(client *Client, action string, data map[string]interface{}) {
+func post(reqId uint32, client *Client, action string, data map[string]interface{}) {
 	switch action {
 	case "Get":
-		client.Get(client.id, data["Key"].(string))
+		go client.Get(reqId, data["Key"].(string))
 	case "Put":
-		client.Put(client.id, data["Key"].(string), data["Value"].(string), 0)
+		go client.Put(reqId, data["Key"].(string), data["Value"].(string), 0)
 	default:
 		log.Fatalln("No action", action)
 	}
@@ -49,7 +49,7 @@ func HTTPInstanceGenerator(wg *sync.WaitGroup, instance string, action string, i
 		time.Sleep(time.Duration(st) * time.Millisecond)
 		stamp = time.Now()
 		time_stamp[index] = time.Now()
-		post(client, action, data[instance].(map[string]interface{}))
+		post(uint32(index), client, action, data[instance].(map[string]interface{}))
 		time_diff = time.Since(stamp)
 	}
 	<-finished
@@ -58,21 +58,30 @@ func HTTPInstanceGenerator(wg *sync.WaitGroup, instance string, action string, i
 func ReceiveResponse(finished chan bool, client *Client, time_stamp *[]time.Time) {
 	RoundTripTimes := make([]int64, len(*time_stamp))
 	Results := make([]string, len(*time_stamp))
-	i := 0
-	for i < len(*time_stamp) {
-		result := <-client.NotifyChannel
-		if int(result.OpId) > i+1 {
-			j := i + 1
-			for j < int(result.OpId) {
-				log.Println(client.id, "Result", j, "missing")
-				RoundTripTimes[j-1] = -1
-				j++
-				i++
-			}
+	// i := 0
+	// for i < len(*time_stamp) {
+	// 	result := <-client.NotifyChannel
+	// 	if int(result.OpId) > i+1 {
+	// 		j := i + 1
+	// 		for j < int(result.OpId) {
+	// 			log.Println(client.id, "Result", j, "missing")
+	// 			RoundTripTimes[j-1] = -1
+	// 			j++
+	// 			i++
+	// 		}
+	// 	}
+	// 	Results[i] = *result.Result
+	// 	RoundTripTimes[i] = int64(time.Since((*time_stamp)[i]) / time.Millisecond)
+	// 	i++
+	// }
+	for i := 0; i < len(*time_stamp); i++{
+		result := <- client.NotifyChannel
+		if result.Timeout {
+			RoundTripTimes[i] = int64(time.Since((*time_stamp)[i]) / time.Millisecond)
+			continue
 		}
 		Results[i] = *result.Result
 		RoundTripTimes[i] = int64(time.Since((*time_stamp)[i]) / time.Millisecond)
-		i++
 	}
 	client.Close()
 	log.Println(client.id, "Round Trip Time:", RoundTripTimes)
