@@ -59,34 +59,20 @@ func ReceiveResponse(finished chan bool, client *Client, time_stamp *[]time.Time
 	RoundTripTimes := make([]int64, len(*time_stamp))
 	Results := make([]string, len(*time_stamp))
 	timeout := 0
-	// i := 0
-	// for i < len(*time_stamp) {
-	// 	result := <-client.NotifyChannel
-	// 	if int(result.OpId) > i+1 {
-	// 		j := i + 1
-	// 		for j < int(result.OpId) {
-	// 			log.Println(client.id, "Result", j, "missing")
-	// 			RoundTripTimes[j-1] = -1
-	// 			j++
-	// 			i++
-	// 		}
-	// 	}
-	// 	Results[i] = *result.Result
-	// 	RoundTripTimes[i] = int64(time.Since((*time_stamp)[i]) / time.Millisecond)
-	// 	i++
-	// }
+	fail := 0
 	for i := 0; i < len(*time_stamp); i++ {
 		result := <-client.NotifyChannel
+		RoundTripTimes[result.ReqId] = int64(time.Since((*time_stamp)[result.ReqId]) / time.Millisecond)
 		if result.Timeout {
 			timeout++
-			RoundTripTimes[result.ReqId] = int64(time.Since((*time_stamp)[result.ReqId]) / time.Millisecond)
-			continue
+		} else if result.StorageFail {
+			fail++
+		} else {
+			Results[result.ReqId] = *result.Result
 		}
-		Results[result.ReqId] = *result.Result
-		RoundTripTimes[result.ReqId] = int64(time.Since((*time_stamp)[result.ReqId]) / time.Millisecond)
 	}
 	client.Close()
-	log.Println(client.id, "time out:", timeout, "Round Trip Time:", RoundTripTimes)
+	log.Println(client.id, "time out:", timeout, "failed:", fail, "Round Trip Time:", RoundTripTimes)
 	finished <- true
 }
 

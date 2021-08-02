@@ -52,11 +52,11 @@ type KvslibComplete struct {
 type NotifyChannel chan ResultStruct
 
 type ResultStruct struct {
-	ReqId				uint32
+	ReqId       uint32
 	OpId        uint32
 	StorageFail bool
 	Result      *string
-	Timeout 		bool
+	Timeout     bool
 }
 
 type KVS struct {
@@ -118,7 +118,17 @@ func (d *KVS) Get(reqId uint32, key string) (uint32, error) {
 		reply := new(ResultStruct)
 		reply.ReqId = reqId
 		reply.OpId = d.OpId
-		reply.Timeout = true
+		reply.Timeout = false
+		switch err.Error() {
+		case "rpc error: code = Unknown desc = FE to Strage fail":
+			reply.StorageFail = true
+		case "rpc error: code = Unavailable desc = upstream request timeout":
+			reply.Timeout = true
+		case "rpc error: code = DeadlineExceeded desc = context deadline exceeded":
+			reply.Timeout = true
+		default:
+			log.Println(err)
+		}
 
 		d.notifyCh <- *reply
 		return reqId, errors.New("HandleGet Failed")
