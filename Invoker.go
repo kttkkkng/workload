@@ -45,8 +45,8 @@ func HTTPInstanceGenerator(wg *sync.WaitGroup, instance string, action string, i
 	finished := make(chan bool)
 	go ReceiveResponse(finished, client, &time_stamp)
 	for index, t := range instance_time {
-		st = int(1000*t - float32(time_diff/time.Millisecond))
-		time.Sleep(time.Duration(st) * time.Millisecond)
+		st = int(1000000*t - float32(time_diff/time.Microsecond))
+		time.Sleep(time.Duration(st) * time.Microsecond)
 		stamp = time.Now()
 		time_stamp[index] = time.Now()
 		post(uint32(index), client, action, data[instance].(map[string]interface{}))
@@ -60,7 +60,8 @@ func ReceiveResponse(finished chan bool, client *Client, time_stamp *[]time.Time
 	Results := make([]string, len(*time_stamp))
 	timeout := 0
 	fail := 0
-	for i := 0; i < len(*time_stamp); i++ {
+	i := 0
+	for ; i < len(*time_stamp); i++ {
 		result := <-client.NotifyChannel
 		RoundTripTimes[result.ReqId] = int64(time.Since((*time_stamp)[result.ReqId]) / time.Millisecond)
 		if result.Timeout {
@@ -72,7 +73,10 @@ func ReceiveResponse(finished chan bool, client *Client, time_stamp *[]time.Time
 		}
 	}
 	client.Close()
-	log.Println(client.id, "time out:", timeout, "failed:", fail, "Round Trip Time:", RoundTripTimes)
+	// Result Print Section
+	cnt := len(RoundTripTimes)
+	log.Println(client.id, "Round Trip Time:", RoundTripTimes, "time out:", timeout, "failed:", fail, "success:", cnt-(fail+timeout), "total:", cnt)
+	// End Result Print Section
 	finished <- true
 }
 

@@ -107,7 +107,7 @@ func (d *KVS) Get(reqId uint32, key string) (uint32, error) {
 
 	client := pb.NewFrontendClient(d.grpcClientConn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	res, err := client.HandleGet(ctx, &pb.FrontendGetRequest{
 		ClientId: d.ClientId.ClientId,
@@ -118,11 +118,18 @@ func (d *KVS) Get(reqId uint32, key string) (uint32, error) {
 		reply := new(ResultStruct)
 		reply.ReqId = reqId
 		reply.OpId = d.OpId
+		reply.Result = new(string)
 		reply.Timeout = false
 		switch err.Error() {
 		case "rpc error: code = Unknown desc = FE to Strage fail":
 			reply.StorageFail = true
+		case "rpc error: code = Unavailable desc = upstream connect error or disconnect/reset before headers. reset reason: connection termination":
+			reply.StorageFail = true
+		case "rpc error: code = Unavailable desc = upstream connect error or disconnect/reset before headers. reset reason: remote refused stream reset":
+			reply.StorageFail = true
 		case "rpc error: code = Unavailable desc = upstream request timeout":
+			reply.Timeout = true
+		case "rpc error: code = Unknown desc = frontend get request timeout":
 			reply.Timeout = true
 		case "rpc error: code = DeadlineExceeded desc = context deadline exceeded":
 			reply.Timeout = true
@@ -154,7 +161,7 @@ func (d *KVS) Put(reqId uint32, key string, value string, delay int) (uint32, er
 	d.OpId++
 
 	client := pb.NewFrontendClient(d.grpcClientConn)
-	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	res, err := client.HandlePut(ctx, &pb.FrontendPutRequest{
 		ClientId: d.ClientId.ClientId,
@@ -167,7 +174,24 @@ func (d *KVS) Put(reqId uint32, key string, value string, delay int) (uint32, er
 		reply := new(ResultStruct)
 		reply.ReqId = reqId
 		reply.OpId = d.OpId
-		reply.Timeout = true
+		reply.Result = new(string)
+		reply.Timeout = false
+		switch err.Error() {
+		case "rpc error: code = Unknown desc = FE to Strage fail":
+			reply.StorageFail = true
+		case "rpc error: code = Unavailable desc = upstream connect error or disconnect/reset before headers. reset reason: connection termination":
+			reply.StorageFail = true
+		case "rpc error: code = Unavailable desc = upstream connect error or disconnect/reset before headers. reset reason: remote refused stream reset":
+			reply.StorageFail = true
+		case "rpc error: code = Unavailable desc = upstream request timeout":
+			reply.Timeout = true
+		case "rpc error: code = Unknown desc = frontend get request timeout":
+			reply.Timeout = true
+		case "rpc error: code = DeadlineExceeded desc = context deadline exceeded":
+			reply.Timeout = true
+		default:
+			log.Println(err)
+		}
 
 		d.notifyCh <- *reply
 

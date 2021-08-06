@@ -9,13 +9,6 @@
             "dataFile": "data/instance1.json",
             "rate": 15,
             "activity_window": [20, 25]
-        },
-        "instance2":{
-            "application": "Put",
-            "distribution": "Uniform",
-            "dataFile": "data/instance2.json",
-            "rate": 15,
-            "activity_window": [20, 25]
         }
     }
 }
