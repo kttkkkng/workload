@@ -1,13 +1,14 @@
-package workload
+package main
 
 import (
 	"log"
-	"reflect"
+	"os"
 )
 
 //Global variable
 var support_distributions []string = []string{"Uniform"}
 
+//Check if the distribution is supported distribution
 func NotSupport(distribution string) bool {
 	for _, support_distribution := range support_distributions {
 		if distribution == support_distribution {
@@ -17,24 +18,29 @@ func NotSupport(distribution string) bool {
 	return true
 }
 
+//Check if the json is valid
+//test_name: the name of this test
+//duration: the duration of this test
+//FronEndAddr: address of the frontend service (must reimplement this when change the application)
+//instances: detail of every instaances which a instance count as 1 go routine that send request with a specific rate, application, distribution, activity_window and data
+//rate: in Uniform distribution mean the amount of request per second
+//application: the function to invoke, e.g. Get, Put (must reimplement this when change the application)
+//distribution: statistic distribution of the request (must add another distribution like Poisson distribution)
+//activity_window: the start time and end time of instance
+//dataFile: file path of the data which is used to send the request
 func CheckWorkloadValidty(workload map[string]interface{}) bool {
-	var fields_to_check map[string]interface{}
-	fields_to_check["test_name"] = ""
-	fields_to_check["blocking_cli"] = false
-	fields_to_check["duration"] = 0
-	for field, t := range fields_to_check {
-		if value, ok := workload[field]; ok {
-			if reflect.TypeOf(value) != reflect.TypeOf(t) {
-				log.Print(field, "type should be", reflect.TypeOf(t))
-				return false
-			}
-		} else {
-			log.Println(field, "not found")
-			return false
-		}
+	if _, ok := workload["test_name"]; !ok {
+		log.Fatalln("test name not found")
 	}
-	if workload["duration"].(int) < 0 {
-		log.Println("duration invalid")
+	if _, ok := workload["duration"]; !ok {
+		log.Fatalln("duration not found")
+	}
+	if workload["duration"].(float64) < 0 {
+		log.Println("duration should be positive integer")
+		return false
+	}
+	if _, ok := workload["FrontEndAddr"]; !ok {
+		log.Println("FrontEndAddr not found")
 		return false
 	}
 	if _, ok := workload["instances"]; !ok {
@@ -72,16 +78,24 @@ func CheckWorkloadValidty(workload map[string]interface{}) bool {
 			return false
 		}
 		if rate, ok := desc["rate"]; ok {
-			if _, ok := rate.(int); !ok {
+			if _, ok := rate.(float64); !ok {
 				log.Println("In", instance, "rate should be positive integer")
 				return false
 			}
-			if rate.(int) < 0 {
+			if rate.(float64) < 0 {
 				log.Println("In", instance, "rate should be positive integer")
 				return false
 			}
 		} else {
 			log.Println("In", instance, "rate not found")
+			return false
+		}
+		if dataFile, ok := desc["dataFile"]; ok {
+			if _, err := os.Stat(dataFile.(string)); os.IsNotExist(err) {
+				log.Fatalln("In", instance, "data file is not exist")
+			}
+		} else {
+			log.Println("In", instance, "data file not found")
 			return false
 		}
 	}

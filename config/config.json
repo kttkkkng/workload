@@ -1,0 +1,14 @@
+{
+    "test_name": "example_test",
+    "duration": 30,
+    "FrontEndAddr": "frontend-grpc.default.172.16.1.240.sslip.io:80",
+    "instances":{
+        "instance1":{
+            "application": "Get",
+            "distribution": "Uniform",
+            "dataFile": "data/instance1.json",
+            "rate": 15,
+            "activity_window": [20, 25]
+        }
+    }
+}

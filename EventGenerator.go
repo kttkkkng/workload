@@ -1,5 +1,10 @@
-package workload
+package main
 
+import (
+	"log"
+)
+
+//create waiting period, the time that go routine have to wait before send the next request
 func CreateEvents(distribution string, rate int, duration int) []float32 {
 	if distribution == "Uniform" {
 		n := duration * rate
@@ -14,6 +19,7 @@ func CreateEvents(distribution string, rate int, duration int) []float32 {
 	return make([]float32, 0)
 }
 
+//make the go routine start send request at the start time and stop at the end time of activity window
 func EnforceActivityWindow(start_time int, end_time int, times []float32) []float32 {
 	n := len(times)
 	i := 1
@@ -23,6 +29,7 @@ func EnforceActivityWindow(start_time int, end_time int, times []float32) []floa
 		if times[i] < float32(start_time) || times[i] > float32(end_time) {
 			out_of_rage++
 		}
+		i++
 	}
 	event_times := make([]float32, n-out_of_rage)
 	i = 0
@@ -39,23 +46,29 @@ func EnforceActivityWindow(start_time int, end_time int, times []float32) []floa
 		event_times[i] -= event_times[i-1]
 		i--
 	}
+	if event_times[len(event_times)-1] <= 0 {
+		event_times = event_times[:len(event_times)-1]
+	}
 	return event_times
 }
 
+//create schedule of all of the sent request go routine
 func GenericEventGenerator(workload map[string]interface{}) (map[string]interface{}, int) {
 	duration := workload["duration"]
-	var all_event map[string]interface{}
+	all_event := make(map[string]interface{})
 	event_count := 0
 	for instance, value := range workload["instances"].(map[string]interface{}) {
+		log.Println("Generate", instance)
 		desc := value.(map[string]interface{})
-		instance_events := CreateEvents(desc["distribution"].(string), desc["rate"].(int), duration.(int))
+		instance_events := CreateEvents(desc["distribution"].(string), int(desc["rate"].(float64)), int(duration.(float64)))
+		log.Println(instance, "is created")
 		start_time := 0
-		end_time := duration.(int)
+		end_time := int(duration.(float64))
 		if activity_window, ok := desc["activity_window"]; ok {
-			if window, ok := activity_window.([]int); ok {
+			if window, ok := activity_window.([]interface{}); ok {
 				if len(window) >= 2 {
-					start_time = window[0]
-					end_time = window[1]
+					start_time = int(window[0].(float64))
+					end_time = int(window[1].(float64))
 				}
 			}
 		}
