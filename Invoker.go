@@ -15,6 +15,7 @@ var data map[string]interface{}
 var base_url string
 var FrontEndAddr string
 
+//send request
 func post(reqId uint32, client *Client, action string, data map[string]interface{}) {
 	switch action {
 	case "Get":
@@ -26,6 +27,7 @@ func post(reqId uint32, client *Client, action string, data map[string]interface
 	}
 }
 
+//create new client and send request every time period
 func HTTPInstanceGenerator(wg *sync.WaitGroup, instance string, action string, instance_time []float32) {
 	defer wg.Done()
 	//url := base_url + action
@@ -55,6 +57,7 @@ func HTTPInstanceGenerator(wg *sync.WaitGroup, instance string, action string, i
 	<-finished
 }
 
+//receive all response and then print result of every request
 func ReceiveResponse(finished chan bool, client *Client, time_stamp *[]time.Time) {
 	RoundTripTimes := make([]int64, len(*time_stamp))
 	Results := make([]string, len(*time_stamp))
@@ -80,6 +83,12 @@ func ReceiveResponse(finished chan bool, client *Client, time_stamp *[]time.Time
 	finished <- true
 }
 
+//read config from path that provide as first argument
+//check if config is valid by call CheckWorkloadValidty
+//generate request schedule by call GenericEventGenerator
+//read data file of every instance
+//start the test, every instance run parallel
+//test end if receive all response
 func main() {
 	if len(os.Args) < 2 {
 		log.Fatalln("config file must be provide as first argument")

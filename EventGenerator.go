@@ -4,6 +4,7 @@ import (
 	"log"
 )
 
+//create waiting period, the time that go routine have to wait before send the next request
 func CreateEvents(distribution string, rate int, duration int) []float32 {
 	if distribution == "Uniform" {
 		n := duration * rate
@@ -18,6 +19,7 @@ func CreateEvents(distribution string, rate int, duration int) []float32 {
 	return make([]float32, 0)
 }
 
+//make the go routine start send request at the start time and stop at the end time of activity window
 func EnforceActivityWindow(start_time int, end_time int, times []float32) []float32 {
 	n := len(times)
 	i := 1
@@ -50,6 +52,7 @@ func EnforceActivityWindow(start_time int, end_time int, times []float32) []floa
 	return event_times
 }
 
+//create schedule of all of the sent request go routine
 func GenericEventGenerator(workload map[string]interface{}) (map[string]interface{}, int) {
 	duration := workload["duration"]
 	all_event := make(map[string]interface{})
