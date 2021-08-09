@@ -29,8 +29,11 @@ func post(reqId uint32, client *Client, action string, data map[string]interface
 
 //create new client and send request every time period
 func HTTPInstanceGenerator(wg *sync.WaitGroup, instance string, action string, instance_time []float32) {
+	//tell main function that this go routine is done
 	defer wg.Done()
 	//url := base_url + action
+
+	//KVS Client
 	config := ClientConfig{
 		ClientID:     instance,
 		FrontEndAddr: FrontEndAddr,
@@ -39,21 +42,31 @@ func HTTPInstanceGenerator(wg *sync.WaitGroup, instance string, action string, i
 	if err := client.Initialize(); err != nil {
 		log.Fatalln(err)
 	}
+	//KVS Client
+
 	stamp := time.Now()
 	var time_diff time.Duration
 	time_diff = 0
 	st := 0
 	time_stamp := make([]time.Time, len(instance_time))
+
 	finished := make(chan bool)
 	go ReceiveResponse(finished, client, &time_stamp)
+
 	for index, t := range instance_time {
+		//the time that go routine has to sleep util sending next request in microsecond
 		st = int(1000000*t - float32(time_diff/time.Microsecond))
+
 		time.Sleep(time.Duration(st) * time.Microsecond)
+
 		stamp = time.Now()
+		//request-sent time stamp
 		time_stamp[index] = time.Now()
 		post(uint32(index), client, action, data[instance].(map[string]interface{}))
 		time_diff = time.Since(stamp)
 	}
+
+	//wait util receive all response
 	<-finished
 }
 
@@ -66,7 +79,11 @@ func ReceiveResponse(finished chan bool, client *Client, time_stamp *[]time.Time
 	i := 0
 	for ; i < len(*time_stamp); i++ {
 		result := <-client.NotifyChannel
+
+		//duration since request was sent util receiving response in millisecond
+		//maybe have to change to microsecond if the application response in 1 millisecond
 		RoundTripTimes[result.ReqId] = int64(time.Since((*time_stamp)[result.ReqId]) / time.Millisecond)
+
 		if result.Timeout {
 			timeout++
 		} else if result.StorageFail {
@@ -93,8 +110,11 @@ func main() {
 	if len(os.Args) < 2 {
 		log.Fatalln("config file must be provide as first argument")
 	}
+
 	var workload map[string]interface{}
 	data = make(map[string]interface{})
+
+	//read config file and check validty
 	file, err := ioutil.ReadFile(os.Args[1])
 	if err != nil {
 		log.Fatalln(err)
@@ -107,12 +127,12 @@ func main() {
 		log.Fatalln("json not valid")
 	}
 	log.Println("Config file is valid")
-	if _, ok := workload["ClientID"]; !ok {
-		workload["ClientID"] = "clientID1"
-	}
 	FrontEndAddr = workload["FrontEndAddr"].(string)
+
 	all_event, event_count := GenericEventGenerator(workload)
 	log.Println("GenericEventGen Completed")
+
+	//read all data file
 	for instance := range all_event {
 		file, err = ioutil.ReadFile(workload["instances"].(map[string]interface{})[instance].(map[string]interface{})["dataFile"].(string))
 		if err != nil {
@@ -125,14 +145,28 @@ func main() {
 		}
 		data[instance] = tmp
 	}
-	log.Println("Test", workload["test_name"].(string), "Start")
+
+	if _, ok := workload["test_name"]; !ok {
+		workload["test_name"] = ""
+	}
+	if name, ok := workload["test_name"].(string); ok {
+		log.Println("Test", name, "Start")
+	} else {
+		log.Println("Test Start")
+	}
+
 	var wg sync.WaitGroup
+
+	//start every instance
 	for instance, instance_time := range all_event {
 		action := workload["instances"].(map[string]interface{})[instance].(map[string]interface{})["application"].(string)
 		wg.Add(1)
 		go HTTPInstanceGenerator(&wg, instance, action, instance_time.([]float32))
 	}
+
+	//wait util every instance end
 	wg.Wait()
+
 	log.Println("Test End")
 	log.Println("Total:", event_count, "event(s)")
 }

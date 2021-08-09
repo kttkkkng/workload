@@ -5,6 +5,7 @@ import (
 )
 
 //create waiting period, the time that go routine have to wait before send the next request
+//add distribution in this func
 func CreateEvents(distribution string, rate int, duration int) []float32 {
 	if distribution == "Uniform" {
 		n := duration * rate
@@ -19,7 +20,7 @@ func CreateEvents(distribution string, rate int, duration int) []float32 {
 	return make([]float32, 0)
 }
 
-//make the go routine start send request at the start time and stop at the end time of activity window
+//limit the activity of the application
 func EnforceActivityWindow(start_time int, end_time int, times []float32) []float32 {
 	n := len(times)
 	i := 1
@@ -49,6 +50,8 @@ func EnforceActivityWindow(start_time int, end_time int, times []float32) []floa
 	if event_times[len(event_times)-1] <= 0 {
 		event_times = event_times[:len(event_times)-1]
 	}
+
+	//the waiting time period(second) of all request
 	return event_times
 }
 

@@ -19,19 +19,7 @@ func NotSupport(distribution string) bool {
 }
 
 //Check if the json is valid
-//test_name: the name of this test
-//duration: the duration of this test
-//FronEndAddr: address of the frontend service (must reimplement this when change the application)
-//instances: detail of every instaances which a instance count as 1 go routine that send request with a specific rate, application, distribution, activity_window and data
-//rate: in Uniform distribution mean the amount of request per second
-//application: the function to invoke, e.g. Get, Put (must reimplement this when change the application)
-//distribution: statistic distribution of the request (must add another distribution like Poisson distribution)
-//activity_window: the start time and end time of instance
-//dataFile: file path of the data which is used to send the request
 func CheckWorkloadValidty(workload map[string]interface{}) bool {
-	if _, ok := workload["test_name"]; !ok {
-		log.Fatalln("test name not found")
-	}
 	if _, ok := workload["duration"]; !ok {
 		log.Fatalln("duration not found")
 	}
